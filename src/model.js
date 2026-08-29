@@ -319,6 +319,25 @@ function makeFinalMatch(id, round, court, a, b) {
   };
 }
 
+function clearFinal(state) {
+  const f = getTournament(state, "FINAL");
+  if (!f) return;
+
+  f.enabled = false;
+  f.teams = [];
+  f.winner = "";
+  f.currentRound = 1;
+  f.roundEndAt = 0;
+  f.roundRunning = false;
+  f.roundPaused = false;
+  f.roundPausedRemainingMs = 0;
+  f.matches = [];
+
+  if (state.activeTournamentId === "FINAL") {
+    state.activeTournamentId = "T1";
+  }
+}
+
 function createFinal(state) {
   const bases = ["T1", "T2", "T3", "T4"].map(id => getTournament(state, id));
   assert(bases.every(Boolean), "Hiányzik valamelyik alapbajnokság.");
@@ -663,6 +682,13 @@ export function applyAction(inputState, action, now = Date.now()) {
       assert(editableEvent(state), "Az esemény archivált.");
       assert(t && t.enabled, "A bajnokság nem érhető el.");
       resetTournamentScores(t);
+
+      // Ha bármelyik alapbajnokság eredményét lenullázzuk,
+      // a korábban létrehozott Final Four többé nem érvényes,
+      // ezért automatikusan töröljük/letiltjuk.
+      if (t.id !== "FINAL") {
+        clearFinal(state);
+      }
       break;
     }
 

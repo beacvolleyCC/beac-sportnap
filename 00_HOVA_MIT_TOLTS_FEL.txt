@@ -1,46 +1,28 @@
-BEAC SPORTNAP – v0.5.4 FRISSÍTÉS
+BEAC SPORTNAP – v0.5.6 JAVÍTÁS
 
-EZ A ZIP CSAK A v0.5.3-HOZ KÉPEST VÁLTOZOTT FÁJLOKAT TARTALMAZZA.
+HIBA:
+A korábban létrehozott Final Four megmaradt akkor is,
+ha valamelyik alapbajnokságot lenulláztuk.
 
-MIT VÁLTOZTAT:
-- 1. pálya és 2. pálya teljesen külön időmérőt kap.
-- Pályánként külön: INDÍTÁS / SZÜNET / FOLYTATÁS / STOP.
-- STOP csak a kiválasztott pálya mérkőzését zárja.
-- A forduló akkor lép tovább automatikusan, ha mindkét pálya meccse lezárult.
-- MINDKETTŐ = GLOBÁLIS vezérlés:
-  - INDÍTÁS/FOLYTATÁS minden még aktív pályára hat.
-  - SZÜNET minden futó pályát megállít.
-  - STOP minden lezárható meccset lezár.
-  - döntetlen pályát nyitva hagyja: következő pont nyer.
-- A publikus oldal is külön mutatja a két pálya idejét.
+JAVÍTÁS:
+- T1–T4 közül bármelyik bajnokság nullázása automatikusan törli a Final Fourt.
+- A FINAL csapatok, meccsek, eredmények és timerállapotok törlődnek.
+- Új döntőt csak akkor lehet újra létrehozni, ha a négy alapbajnokság ismét befejeződött.
 
-GITHUBRA / A HELYI REPOBA MÁSOLODD:
+MÁSOLODD A HELYI GITHUB REPOBA:
 - src/model.js
-- src/index.js
-- public/admin.js
-- public/public.js
-- public/styles.css
 - tests/model.test.mjs
 - package.json
 - QA.md
 
-NEM KELL:
-- ADMIN_PIN-t újra beállítani.
-- Cloudflare-ben új Workert létrehozni.
-- Google Apps Scriptet módosítani.
-
 LÉPÉSEK:
-1. Csomagold ki ezt a ZIP-et.
-2. A KICSOMAGOLT TARTALMAT másold ide:
-   C:\Users\Administrator\Documents\GitHub\beac-sportnap
-3. Windows: Fájlok cseréje a célhelyen.
-4. GitHub Desktop -> Changes.
-5. Summary:
-   Independent court timers v0.5.4
-6. Commit to main.
-7. Push origin.
-8. Cloudflare automatikusan buildel/deployol.
+1. ZIP kibontása.
+2. Tartalma -> C:\Users\Administrator\Documents\GitHub\beac-sportnap
+3. Fájlok cseréje.
+4. GitHub Desktop -> Changes
+5. Summary: Final reset fix v0.5.6
+6. Commit to main
+7. Push origin
+8. Cloudflare automatikusan deployol.
 
-FONTOS:
-A v0.5.4 kód kezeli a már Cloudflare-ben eltárolt v0.5.3 állapotot is.
-Nem kell emiatt nullázni a teljes sportnapot.
+Cloudflare-ben és Google Apps Scriptben nem kell semmit átállítani.

@@ -289,4 +289,73 @@ assert.equal("recentActionIds" in decorated, false);
 const table = calculateStandings(t1(legacyFinish));
 assert.equal(table.length, 4);
 
-console.log("MODEL TESTS OK – v0.5.4 independent court timers");
+
+
+// v0.5.6 – alapbajnokság nullázása törli a korábban létrehozott Final Fourt
+let finalResetState = liveState();
+
+// Gyorsan készre állítjuk a 4 alapbajnokságot úgy, hogy legyen győztesük.
+for (const tournamentId of ["T1","T2","T3","T4"]) {
+  const tt = finalResetState.tournaments.find(x=>x.id===tournamentId);
+
+  for (const round of [1,2,3]) {
+    const current = tt.matches.filter(m=>m.round===round);
+    for (const m of current) {
+      finalResetState = applyAction(
+        finalResetState,
+        {
+          type:"CHANGE_SCORE",
+          tournamentId,
+          round,
+          court:m.court,
+          side:"A",
+          delta:1,
+          actionId:`${tournamentId}-r${round}-c${m.court}-pt`
+        },
+        90000 + round
+      ).state;
+    }
+
+    finalResetState = applyAction(
+      finalResetState,
+      {
+        type:"FINISH_ROUND",
+        tournamentId,
+        actionId:`${tournamentId}-r${round}-finish`
+      },
+      91000 + round
+    ).state;
+  }
+}
+
+finalResetState = applyAction(
+  finalResetState,
+  { type:"CREATE_FINAL", actionId:"create-final-for-reset-test" },
+  92000
+).state;
+
+let finalT = finalResetState.tournaments.find(t=>t.id==="FINAL");
+assert.equal(finalT.enabled, true);
+assert.equal(finalT.teams.length, 4);
+assert.ok(finalT.matches.length > 0);
+assert.equal(finalResetState.activeTournamentId, "FINAL");
+
+// Egy alapbajnokság nullázása automatikusan érvényteleníti a döntőt.
+finalResetState = applyAction(
+  finalResetState,
+  {
+    type:"RESET_TOURNAMENT",
+    tournamentId:"T1",
+    actionId:"reset-base-clears-final"
+  },
+  93000
+).state;
+
+finalT = finalResetState.tournaments.find(t=>t.id==="FINAL");
+assert.equal(finalT.enabled, false);
+assert.deepEqual(finalT.teams, []);
+assert.deepEqual(finalT.matches, []);
+assert.equal(finalT.winner, "");
+assert.equal(finalResetState.activeTournamentId, "T1");
+
+console.log("MODEL TESTS OK – v0.5.6 Final reset cascade");

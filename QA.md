@@ -68,3 +68,10 @@ Kötelező ellenőrzés:
 - CLOSED: „A sportnap lezárult.”
 - Angol megfelelőik is frissítve.
 - v0.5.4 pályánkénti timer/STOP logikához nem nyúltunk.
+
+
+## v0.5.6 – Final Four reset javítás
+- Ha T1–T4 közül bármelyik alapbajnokságot lenullázzuk, a már létrehozott Final Four automatikusan törlődik/letiltódik.
+- Final csapatlista, meccsek, győztes és timerállapotok törlődnek.
+- Ha éppen a FINAL volt kiválasztva, a rendszer T1-re áll vissza.
+- Automatikus regressziós teszt hozzáadva.
