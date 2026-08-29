@@ -4,7 +4,7 @@ Ez az út nem igényel helyi Node/Wrangler telepítést.
 
 ## 1. GitHub
 
-1. Hozz létre egy új repositoryt, pl. `beac-sportnap-volleyball-beta`.
+1. Hozz létre egy új repositoryt, pl. `beac-sportnap`.
 2. Töltsd fel a ZIP KICSOMAGOLT tartalmát a repository gyökerébe.
 3. A repository gyökerében közvetlenül látszódjon:
    - `package.json`
@@ -20,7 +20,7 @@ Ez az út nem igényel helyi Node/Wrangler telepítést.
 3. **Create application**.
 4. **Import a repository**.
 5. Kösd össze a GitHub fiókodat és válaszd ki a repositoryt.
-6. A Worker neve legyen: `beac-sportnap-volleyball-beta`
+6. A Worker neve legyen: `beac-sportnap`
    - ennek egyeznie kell a `wrangler.jsonc` `name` mezőjével.
 7. Deploy command: hagyd az alapértelmezett `npx wrangler deploy` értéken.
 8. Deploy.

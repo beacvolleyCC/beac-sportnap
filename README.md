@@ -1,4 +1,4 @@
-# BEAC Sportnap – Röplabda realtime béta v0.5.0
+# BEAC Sportnap – Röplabda realtime béta v0.5.2
 
 Ez a verzió már NEM Google Sheetből pontoz élőben.
 
