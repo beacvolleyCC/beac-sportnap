@@ -1,0 +1,11 @@
+BEAC Röplabda realtime béta v0.5.0
+
+AUTOMATIKUS ELLENŐRZÉS:
+- Worker JavaScript syntax: OK
+- Model syntax: OK
+- Public JavaScript syntax: OK
+- Admin JavaScript syntax: OK
+- Model unit tests: OK
+
+KÖVETKEZŐ LÉPÉS:
+Olvasd a TELEPITES_GITHUB_CLOUDFLARE.md fájlt.
