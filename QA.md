@@ -40,3 +40,20 @@
 - STOP nem döntetlennél lezárja a két aktuális mérkőzést és továbblép.
 - A külön FORDULÓ LEZÁRÁSA gomb kikerült.
 - A publikus oldalon pause alatt a timer megáll, és „Szüneteltetve / Paused” látható.
+
+
+## v0.5.4 – pályánként külön vezérlés
+Kötelező ellenőrzés:
+- 1. pálya kiválasztva: INDÍTÁS csak az 1. pályát indítja.
+- 2. pálya kiválasztva: INDÍTÁS csak a 2. pályát indítja.
+- Az egyik pálya SZÜNET/FOLYTATÁS művelete nem módosítja a másik timerét.
+- STOP pályánként csak az adott mérkőzést zárja.
+- Lezárt meccsen a pontgombok tiltva vannak.
+- A forduló csak akkor lép tovább, amikor mindkét aktuális mérkőzés lezárult.
+- Mindkettő = GLOBÁLIS vezérlés:
+  - INDÍTÁS/FOLYTATÁS minden még aktív, nem futó pályára hat;
+  - SZÜNET minden éppen futó pályára hat;
+  - STOP lezárja a nem döntetlen aktív meccseket;
+  - döntetlen meccs nyitva marad, következő pont dönt.
+- Publikus oldalon a két pálya saját ideje egymástól függetlenül látszik.
+- v0.5.3 perzisztált állapot migrációja tesztelve.

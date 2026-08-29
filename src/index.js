@@ -14,7 +14,7 @@ function json(data, status = 200) {
 }
 
 function eventId(env) {
-  return env.EVENT_ID || "beac-sportnap-volleyball-beta";
+  return env.EVENT_ID || "beac-sportnap";
 }
 
 function archiveKey(env) {
@@ -190,11 +190,13 @@ export class TournamentRoom extends DurableObject {
 
       try {
         let duplicate = false;
+        let notice = "";
 
         const nextState = await this.ctx.storage.transaction(async txn => {
           const before = (await txn.get("state")) || defaultState();
           const result = applyAction(before, action, Date.now());
           duplicate = result.duplicate;
+          notice = result.notice || "";
 
           if (!duplicate) {
             await txn.put("state", result.state);
@@ -215,7 +217,8 @@ export class TournamentRoom extends DurableObject {
           ok: true,
           duplicate,
           state: decorated,
-          ackActionId: action.actionId || null
+          ackActionId: action.actionId || null,
+          notice
         });
       } catch (error) {
         return json({
@@ -263,6 +266,8 @@ export class TournamentRoom extends DurableObject {
 
     if (
       action.type === "FINISH_ROUND" ||
+      action.type === "STOP_ROUND" ||
+      action.type === "STOP_MATCH" ||
       action.type === "SET_EVENT_STATUS" ||
       action.type === "CREATE_FINAL"
     ) {

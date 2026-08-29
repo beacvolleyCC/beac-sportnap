@@ -14,7 +14,7 @@ const T = {
     closed:"Ez az esemény lezárult.", shareTitle:"Élő eredmények megosztása",
     shareHint:"A QR-kód és a link az egész sportnap közös eredményoldalára mutat.",
     copy:"Link másolása", share:"Megosztás", print:"QR nyomtatása", close:"Bezárás",
-    time:"IDŐ!", paused:"Szüneteltetve", finalUnknown:"A döntő párosítása még nem ismert.", noData:"Nincs eredmény."
+    time:"IDŐ!", paused:"Szüneteltetve", finished:"Mérkőzés vége", timeExpired:"Idő lejárt", finalUnknown:"A döntő párosítása még nem ismert.", noData:"Nincs eredmény."
   },
   en: {
     standings:"Standings", team:"Team", results:"Results", rules:"Rules",
@@ -31,7 +31,7 @@ const T = {
     closed:"This event has ended.", shareTitle:"Share live results",
     shareHint:"The QR code and link point to the shared results page for the whole sports day.",
     copy:"Copy link", share:"Share", print:"Print QR", close:"Close",
-    time:"TIME!", paused:"Paused", finalUnknown:"The final pairing is not known yet.", noData:"No results yet."
+    time:"TIME!", paused:"Paused", finished:"Match finished", timeExpired:"Time expired", finalUnknown:"The final pairing is not known yet.", noData:"No results yet."
   }
 };
 
@@ -121,12 +121,43 @@ function formatDuration(sec){
   return lang === "en" ? `${value} min` : `${value} perc`;
 }
 
-function remaining(t){
-  if(t.roundPaused){
-    return Math.max(0,Math.ceil(Number(t.roundPausedRemainingMs||0)/1000));
+function matchRemaining(t,m){
+  if(m.timerPaused){
+    return Math.max(0,Math.ceil(Number(m.timerPausedRemainingMs||0)/1000));
   }
-  if(!t.roundRunning || !t.roundEndAt) return t.roundSeconds;
-  return Math.max(0, Math.ceil((t.roundEndAt-Date.now())/1000));
+
+  if(m.timerRunning){
+    return Math.max(0,Math.ceil((Number(m.timerEndAt||0)-Date.now())/1000));
+  }
+
+  // v0.5.3 állapot fallback.
+  if(m.timerRunning===undefined){
+    if(t.roundPaused){
+      return Math.max(0,Math.ceil(Number(t.roundPausedRemainingMs||0)/1000));
+    }
+    if(t.roundRunning&&t.roundEndAt){
+      return Math.max(0,Math.ceil((Number(t.roundEndAt)-Date.now())/1000));
+    }
+  }
+
+  return Number(t.roundSeconds||0);
+}
+
+function matchMode(t,m){
+  if(m.finished)return "finished";
+  if(m.timerPaused)return "paused";
+  if(m.timerRunning)return matchRemaining(t,m)<=0?"expired":"running";
+  return "ready";
+}
+
+function publicMatchStatus(t,m){
+  const mode=matchMode(t,m);
+  if(mode==="finished")return tr("finished");
+  if(mode==="paused")return tr("paused");
+  if(mode==="expired"){
+    return m.scoreA===m.scoreB?tr("golden"):tr("timeExpired");
+  }
+  return "";
 }
 
 function fmt(sec){
@@ -182,15 +213,21 @@ function renderTournament(){
   $("winnerWrap").innerHTML=t.winner?`
     <div class="winner"><small>${tr("winner")}</small><strong>🏆 ${escapeHtml(t.winner)}</strong></div>`:"";
 
-  const active=t.matches.filter(m=>m.round===t.currentRound);
+  const active=t.matches.filter(m=>Number(m.round)===Number(t.currentRound));
+
   $("matches").innerHTML=active.map(m=>{
     if(m.a==null||m.b==null){
-      return `<article class="match-card"><div class="match-head"><span>${m.court}. ${tr("court")}</span><span>${t.currentRound}. ${tr("round")}</span></div><div class="match-body"><div class="sub" style="text-align:center">${tr("finalUnknown")}</div></div></article>`;
+      return `<article class="match-card">
+        <div class="match-head"><span>${m.court}. ${tr("court")}</span><span>${t.currentRound}. ${tr("round")}</span></div>
+        <div class="match-body"><div class="sub" style="text-align:center">${tr("finalUnknown")}</div></div>
+      </article>`;
     }
-    const sec=remaining(t);
-    const timeup=t.roundRunning&&sec===0;
-    const golden=timeup&&m.scoreA===m.scoreB;
-    return `<article class="match-card">
+
+    const mode=matchMode(t,m);
+    const sec=matchRemaining(t,m);
+    const timerText=mode==="finished"?tr("finished"):mode==="expired"?tr("time"):fmt(sec);
+
+    return `<article class="match-card ${mode}">
       <div class="match-head"><span>${m.court}. ${tr("court")}</span><span>${t.currentRound}. ${tr("round")}</span></div>
       <div class="match-body">
         <div class="teams-score">
@@ -198,8 +235,18 @@ function renderTournament(){
           <div class="live-score">${m.scoreA} : ${m.scoreB}</div>
           <div class="team">${escapeHtml(t.teams[m.b])}</div>
         </div>
-        <div class="public-timer" data-timer>${timeup?tr("time"):fmt(sec)}</div>
-        <div class="golden">${t.roundPaused?tr("paused"):(golden?tr("golden"):"")}</div>
+        <div
+          class="public-timer"
+          data-match-timer
+          data-round="${m.round}"
+          data-court="${m.court}"
+        >${timerText}</div>
+        <div
+          class="golden"
+          data-match-status
+          data-round="${m.round}"
+          data-court="${m.court}"
+        >${escapeHtml(publicMatchStatus(t,m))}</div>
       </div>
     </article>`;
   }).join("");
@@ -229,9 +276,28 @@ function translateStatic(){
 
 setInterval(()=>{
   const t=currentTournament(); if(!t) return;
-  const sec=remaining(t); const timeup=t.roundRunning&&sec===0;
-  document.querySelectorAll("[data-timer]").forEach(el=>el.textContent=timeup?tr("time"):fmt(sec));
-  if(timeup) renderTournament();
+
+  document.querySelectorAll("[data-match-timer]").forEach(el=>{
+    const round=Number(el.dataset.round);
+    const court=Number(el.dataset.court);
+    const m=t.matches.find(x=>Number(x.round)===round&&Number(x.court)===court);
+    if(!m)return;
+
+    const mode=matchMode(t,m);
+    const sec=matchRemaining(t,m);
+    el.textContent=mode==="finished"
+      ?tr("finished")
+      :mode==="expired"
+        ?tr("time")
+        :fmt(sec);
+  });
+
+  document.querySelectorAll("[data-match-status]").forEach(el=>{
+    const round=Number(el.dataset.round);
+    const court=Number(el.dataset.court);
+    const m=t.matches.find(x=>Number(x.round)===round&&Number(x.court)===court);
+    if(m)el.textContent=publicMatchStatus(t,m);
+  });
 },500);
 
 function setLang(next){lang=next;localStorage.setItem("beac-lang",lang);render();}

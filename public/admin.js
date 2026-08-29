@@ -77,14 +77,60 @@ window.addEventListener("online",()=>{flushQueue();if(state?.eventStatus==="LIVE
 window.addEventListener("offline",()=>setConnection("offline","OFFLINE"));
 
 function currentT(){return state?.tournaments.find(t=>t.id===selectedId);}
-function remaining(t){
-  if(t.roundPaused){
-    return Math.max(0,Math.ceil(Number(t.roundPausedRemainingMs||0)/1000));
-  }
-  if(!t.roundRunning||!t.roundEndAt)return t.roundSeconds;
-  return Math.max(0,Math.ceil((t.roundEndAt-Date.now())/1000));
+
+function currentMatches(t){
+  return (t?.matches||[]).filter(m=>Number(m.round)===Number(t.currentRound));
 }
+
+function matchRemaining(t,m){
+  if(!m)return Number(t?.roundSeconds||0);
+
+  if(m.timerPaused){
+    return Math.max(0,Math.ceil(Number(m.timerPausedRemainingMs||0)/1000));
+  }
+
+  if(m.timerRunning){
+    return Math.max(0,Math.ceil((Number(m.timerEndAt||0)-Date.now())/1000));
+  }
+
+  // Régi v0.5.3 állapot fallback.
+  if(m.timerRunning===undefined){
+    if(t.roundPaused){
+      return Math.max(0,Math.ceil(Number(t.roundPausedRemainingMs||0)/1000));
+    }
+    if(t.roundRunning&&t.roundEndAt){
+      return Math.max(0,Math.ceil((Number(t.roundEndAt)-Date.now())/1000));
+    }
+  }
+
+  return Number(t?.roundSeconds||0);
+}
+
+function matchMode(t,m){
+  if(!m)return "missing";
+  if(m.finished)return "finished";
+  if(m.timerPaused)return "paused";
+  if(m.timerRunning)return matchRemaining(t,m)<=0?"expired":"running";
+  return "ready";
+}
+
 function fmt(s){return`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;}
+
+function modeText(t,m){
+  const mode=matchMode(t,m);
+  const sec=matchRemaining(t,m);
+
+  if(mode==="finished")return "Mérkőzés lezárva";
+  if(mode==="paused")return `Szüneteltetve · ${fmt(sec)}`;
+  if(mode==="running")return `Játék folyamatban · ${fmt(sec)}`;
+  if(mode==="expired"){
+    return m.scoreA===m.scoreB
+      ?"IDŐ! · döntetlen – a következő pont nyer"
+      :"IDŐ! · STOP-pal lezárható";
+  }
+  if(mode==="ready")return `Indításra kész · ${fmt(sec)}`;
+  return "Nincs mérkőzés";
+}
 
 function pendingDelta(match,side){
   return getQueue().filter(a=>a.type==="CHANGE_SCORE"&&a.tournamentId===selectedId&&Number(a.round)===Number(match.round)&&Number(a.court)===Number(match.court)&&a.side===side).reduce((sum,a)=>sum+Number(a.delta||0),0);
@@ -118,6 +164,7 @@ async function sendAction(action,{queueScore=false}={}){
     }
 
     acceptState(data.state,data.ackActionId);
+    if(data.notice)toast(data.notice);
     setConnection(state.eventStatus==="LIVE"?"online":"","REALTIME");
     return true;
   }catch(e){
@@ -190,69 +237,168 @@ function renderTabs(){
 }
 
 function renderMatch(){
-  const t=currentT();const sec=remaining(t);const timeup=t.roundRunning&&sec===0;
-  $("roundLabel").textContent=`${t.currentRound}. forduló`;
-  $("timer").textContent=timeup?"IDŐ!":fmt(sec);
-  $("timer").classList.toggle("timeup",timeup);
-
+  const t=currentT();
+  const all=currentMatches(t);
+  const timerEl=$("timer");
   const mainBtn=$("timerMainBtn");
   const resetBtn=$("resetTimerBtn");
   const stopBtn=$("stopBtn");
 
-  if(state.eventStatus!=="LIVE"||t.winner){
-    $("timerStatus").textContent=t.winner?"A bajnokság lezárult.":"A timer LIVE módban indítható.";
-    mainBtn.textContent="INDÍTÁS";
-    mainBtn.disabled=true;
-    resetBtn.classList.remove("hidden");
-    resetBtn.disabled=Boolean(t.winner);
-    stopBtn.classList.add("hidden");
-  }else if(t.roundPaused){
-    $("timerStatus").textContent="Szüneteltetve";
-    mainBtn.textContent="FOLYTATÁS";
-    mainBtn.disabled=false;
-    resetBtn.classList.add("hidden");
-    stopBtn.classList.remove("hidden");
-    stopBtn.disabled=false;
-  }else if(t.roundRunning){
-    $("timerStatus").textContent=timeup
-      ?"Idő lejárt. Döntetlennél a következő pont nyer."
-      :"Játék folyamatban";
-    mainBtn.textContent="SZÜNET";
-    mainBtn.disabled=timeup;
-    resetBtn.classList.add("hidden");
-    stopBtn.classList.remove("hidden");
-    stopBtn.disabled=false;
+  mainBtn.classList.remove("hidden");
+  resetBtn.classList.add("hidden");
+  stopBtn.classList.add("hidden");
+  mainBtn.disabled=false;
+  resetBtn.disabled=false;
+  stopBtn.disabled=false;
+  mainBtn.dataset.mode="";
+
+  const isGlobal=courtFilter===0;
+
+  if(isGlobal){
+    $("roundLabel").textContent=`${t.currentRound}. forduló · GLOBÁLIS VEZÉRLÉS`;
+    timerEl.classList.remove("timeup");
+    timerEl.classList.add("global-mode");
+
+    timerEl.innerHTML=`<div class="global-timers">${
+      all.map(m=>{
+        const mode=matchMode(t,m);
+        const sec=matchRemaining(t,m);
+        const timerText=mode==="finished"?"VÉGE":mode==="expired"?"IDŐ!":fmt(sec);
+        return`<div class="global-timer-item ${mode}">
+          <span>${m.court}. PÁLYA</span>
+          <strong>${timerText}</strong>
+          <small>${esc(modeText(t,m))}</small>
+        </div>`;
+      }).join("")
+    }</div>`;
+
+    const active=all.filter(m=>!m.finished&&m.a!=null&&m.b!=null);
+    const pausable=active.filter(m=>matchMode(t,m)==="running");
+    const paused=active.filter(m=>matchMode(t,m)==="paused");
+    const ready=active.filter(m=>matchMode(t,m)==="ready");
+    const expired=active.filter(m=>matchMode(t,m)==="expired");
+
+    if(state.eventStatus!=="LIVE"||t.winner){
+      $("timerStatus").textContent=t.winner
+        ?"A bajnokság lezárult."
+        :"A timer LIVE módban indítható.";
+      mainBtn.textContent="INDÍTÁS";
+      mainBtn.disabled=true;
+      stopBtn.classList.add("hidden");
+    }else if(!active.length){
+      $("timerStatus").textContent="Nincs aktív mérkőzés.";
+      mainBtn.classList.add("hidden");
+    }else if(pausable.length){
+      $("timerStatus").textContent="Globális vezérlés – a SZÜNET minden futó pályát megállít.";
+      mainBtn.textContent="SZÜNET";
+      mainBtn.dataset.mode="pause";
+      stopBtn.classList.remove("hidden");
+    }else if(paused.length){
+      $("timerStatus").textContent="Globális vezérlés – a FOLYTATÁS a szüneteltetett és még el nem indított pályákat is elindítja.";
+      mainBtn.textContent="FOLYTATÁS";
+      mainBtn.dataset.mode="start";
+      stopBtn.classList.remove("hidden");
+    }else if(ready.length){
+      $("timerStatus").textContent="Globális vezérlés – az INDÍTÁS minden még el nem indított pályát elindít.";
+      mainBtn.textContent="INDÍTÁS";
+      mainBtn.dataset.mode="start";
+      resetBtn.classList.remove("hidden");
+      if(expired.length)stopBtn.classList.remove("hidden");
+    }else if(expired.length){
+      $("timerStatus").textContent="Idő lejárt. A STOP lezárja, ami lezárható; a döntetlen pálya nyitva marad.";
+      mainBtn.classList.add("hidden");
+      stopBtn.classList.remove("hidden");
+    }
   }else{
-    $("timerStatus").textContent="Indításra kész";
-    mainBtn.textContent="INDÍTÁS";
-    mainBtn.disabled=false;
-    resetBtn.classList.remove("hidden");
-    resetBtn.disabled=false;
-    stopBtn.classList.add("hidden");
+    const m=all.find(x=>Number(x.court)===courtFilter);
+    $("roundLabel").textContent=`${t.currentRound}. forduló · ${courtFilter}. pálya`;
+    timerEl.classList.remove("global-mode");
+
+    const mode=matchMode(t,m);
+    const sec=matchRemaining(t,m);
+    timerEl.textContent=mode==="finished"?"VÉGE":mode==="expired"?"IDŐ!":fmt(sec);
+    timerEl.classList.toggle("timeup",mode==="expired");
+    $("timerStatus").textContent=modeText(t,m);
+
+    if(state.eventStatus!=="LIVE"||t.winner||!m||m.finished){
+      mainBtn.classList.add("hidden");
+      stopBtn.classList.add("hidden");
+    }else if(mode==="running"){
+      mainBtn.textContent="SZÜNET";
+      mainBtn.dataset.mode="pause";
+      stopBtn.classList.remove("hidden");
+    }else if(mode==="paused"){
+      mainBtn.textContent="FOLYTATÁS";
+      mainBtn.dataset.mode="start";
+      stopBtn.classList.remove("hidden");
+    }else if(mode==="ready"){
+      mainBtn.textContent="INDÍTÁS";
+      mainBtn.dataset.mode="start";
+      resetBtn.classList.remove("hidden");
+    }else if(mode==="expired"){
+      mainBtn.classList.add("hidden");
+      stopBtn.classList.remove("hidden");
+    }
   }
 
-  let ms=t.matches.filter(m=>m.round===t.currentRound);
-  if(courtFilter)ms=ms.filter(m=>m.court===courtFilter);
+  let ms=all;
+  if(courtFilter)ms=ms.filter(m=>Number(m.court)===courtFilter);
+
   $("courts").innerHTML=ms.map(m=>{
-    if(m.a==null||m.b==null)return`<section class="card court-card"><div class="court-label">${m.court}. pálya</div><div class="sub">A döntő párosítása még nem ismert.</div></section>`;
-    return`<section class="card court-card">
-      <div class="court-label">${m.court}. pálya</div>
+    if(m.a==null||m.b==null){
+      return`<section class="card court-card">
+        <div class="court-label">${m.court}. pálya</div>
+        <div class="sub">A döntő párosítása még nem ismert.</div>
+      </section>`;
+    }
+
+    const mode=matchMode(t,m);
+    return`<section class="card court-card ${m.finished?"finished":""}">
+      <div class="court-card-head">
+        <div class="court-label">${m.court}. pálya</div>
+        <div class="court-timer-state ${mode}">${esc(modeText(t,m))}</div>
+      </div>
       <div class="score-grid">
         ${sideHtml(t,m,"A",m.a)}
         ${sideHtml(t,m,"B",m.b)}
       </div>
-      <button class="btn full reset-match" data-round="${m.round}" data-court="${m.court}" style="margin-top:12px">Meccs nullázása</button>
+      <button
+        class="btn full reset-match"
+        data-round="${m.round}"
+        data-court="${m.court}"
+        style="margin-top:12px"
+        ${m.finished?"disabled":""}
+      >Meccs nullázása</button>
     </section>`;
   }).join("");
+
   document.querySelectorAll(".score-action").forEach(b=>b.onclick=()=>scoreClick(b));
-  document.querySelectorAll(".reset-match").forEach(b=>b.onclick=()=>{if(confirm("Biztosan nullázod ezt a meccset?"))sendAction({type:"RESET_MATCH",tournamentId:selectedId,round:Number(b.dataset.round),court:Number(b.dataset.court)});});
-  $("court1").classList.toggle("active",courtFilter===1);$("court2").classList.toggle("active",courtFilter===2);$("courtBoth").classList.toggle("active",courtFilter===0);
+  document.querySelectorAll(".reset-match").forEach(b=>b.onclick=()=>{
+    if(b.disabled)return;
+    if(confirm("Biztosan nullázod ezt a meccset? A saját időmérője is visszaáll.")){
+      sendAction({
+        type:"RESET_MATCH",
+        tournamentId:selectedId,
+        round:Number(b.dataset.round),
+        court:Number(b.dataset.court)
+      });
+    }
+  });
+
+  $("court1").classList.toggle("active",courtFilter===1);
+  $("court2").classList.toggle("active",courtFilter===2);
+  $("courtBoth").classList.toggle("active",courtFilter===0);
 }
 function sideHtml(t,m,side,teamIndex){
-  return`<div class="side"><div class="score-team">${esc(t.teams[teamIndex])}</div><div class="score-number">${shownScore(m,side)}</div><div class="score-buttons">
-    <button class="btn score-action" data-round="${m.round}" data-court="${m.court}" data-side="${side}" data-delta="-1">−</button>
-    <button class="btn yellow score-action" data-round="${m.round}" data-court="${m.court}" data-side="${side}" data-delta="1">+</button>
-  </div></div>`;
+  const disabled=m.finished||state.eventStatus!=="LIVE";
+  return`<div class="side">
+    <div class="score-team">${esc(t.teams[teamIndex])}</div>
+    <div class="score-number">${shownScore(m,side)}</div>
+    <div class="score-buttons">
+      <button class="btn score-action" data-round="${m.round}" data-court="${m.court}" data-side="${side}" data-delta="-1" ${disabled?"disabled":""}>−</button>
+      <button class="btn yellow score-action" data-round="${m.round}" data-court="${m.court}" data-side="${side}" data-delta="1" ${disabled?"disabled":""}>+</button>
+    </div>
+  </div>`;
 }
 function scoreClick(b){
   if(state.eventStatus!=="LIVE"){toast("Pontozni csak LIVE módban lehet.");return;}
@@ -284,19 +430,24 @@ setInterval(()=>{if(state&&page==="match")renderMatch();},500);
 $("court1").onclick=()=>setCourt(1);$("court2").onclick=()=>setCourt(2);$("courtBoth").onclick=()=>setCourt(0);
 function setCourt(v){courtFilter=v;localStorage.setItem("beac-court-filter",String(v));renderMatch();}
 $("timerMainBtn").onclick=()=>{
-  const t=currentT();
-  if(!t)return;
+  const mode=$("timerMainBtn").dataset.mode;
+  if(!mode)return;
 
-  if(t.roundRunning){
-    sendAction({type:"PAUSE_ROUND",tournamentId:selectedId});
-  }else{
-    sendAction({type:"START_ROUND",tournamentId:selectedId});
-  }
+  sendAction({
+    type:mode==="pause"?"PAUSE_MATCH":"START_MATCH",
+    tournamentId:selectedId,
+    court:courtFilter
+  });
 };
 
 $("resetTimerBtn").onclick=()=>{
-  if(confirm("Visszaállítsuk az időt a teljes meccsidőre? A pontok nem törlődnek.")){
-    sendAction({type:"RESET_TIMER",tournamentId:selectedId});
+  const target=courtFilter===0?"mindkét pálya":"a kiválasztott pálya";
+  if(confirm(`Visszaállítsuk ${target} idejét a teljes meccsidőre? A pontok nem törlődnek.`)){
+    sendAction({
+      type:"RESET_TIMER",
+      tournamentId:selectedId,
+      court:courtFilter
+    });
   }
 };
 
@@ -304,17 +455,34 @@ $("stopBtn").onclick=()=>{
   const t=currentT();
   if(!t)return;
 
-  const current=t.matches.filter(m=>m.round===t.currentRound);
-  const tied=current.filter(m=>m.a!=null&&m.b!=null&&m.scoreA===m.scoreB);
+  let targets=currentMatches(t).filter(m=>!m.finished&&m.a!=null&&m.b!=null);
+  if(courtFilter)targets=targets.filter(m=>Number(m.court)===courtFilter);
+  if(!targets.length)return;
 
-  if(tied.length){
-    const courts=tied.map(m=>`${m.court}. pálya`).join(", ");
-    toast(`Nem zárható le: ${courts} döntetlen. A következő pont nyer.`);
+  const tied=targets.filter(m=>m.scoreA===m.scoreB);
+
+  if(courtFilter&&tied.length){
+    toast(`${courtFilter}. pálya: döntetlen – a következő pont nyer.`);
     return;
   }
 
-  if(confirm("STOP = a forduló vége. Lezárjuk a két mérkőzést és továbblépünk?")){
-    sendAction({type:"STOP_ROUND",tournamentId:selectedId});
+  if(!courtFilter&&tied.length===targets.length){
+    toast("Mindkét még aktív pálya döntetlen – a következő pont nyer.");
+    return;
+  }
+
+  const question=courtFilter
+    ? `STOP = a ${courtFilter}. pálya mérkőzésének vége. Lezárjuk?`
+    : tied.length
+      ? "Globális STOP: a nem döntetlen mérkőzést lezárjuk, a döntetlen pálya nyitva marad. Mehet?"
+      : "Globális STOP: lezárjuk mindkét még aktív mérkőzést?";
+
+  if(confirm(question)){
+    sendAction({
+      type:"STOP_MATCH",
+      tournamentId:selectedId,
+      court:courtFilter
+    });
   }
 };
 
