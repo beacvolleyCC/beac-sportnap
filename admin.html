@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Röplabda – Admin</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="admin-body">
+  <main id="loginScreen" class="wrap">
+    <section class="card login">
+      <h1>Koordinátori belépés</h1>
+      <div class="sub">A Cloudflare-ben beállított admin PIN szükséges.</div>
+      <input id="pin" type="password" inputmode="numeric" placeholder="PIN" style="margin-top:12px">
+      <button id="loginBtn" class="btn black full" style="margin-top:9px">Belépés</button>
+      <div id="loginError" class="sub" style="margin-top:8px"></div>
+    </section>
+  </main>
+
+  <main id="adminApp" class="wrap hidden">
+    <header class="admin-head">
+      <div class="admin-brand"><img src="/beac_logo.png" alt="BEAC"><div><h1>Sportnap – Röplabda</h1><div id="adminSub" class="sub"></div></div></div>
+      <div id="connection" class="connection">BETÖLTÉS</div>
+    </header>
+
+    <div id="eventNotice" class="notice upcoming"></div>
+    <nav id="tournamentTabs" class="admin-tabs"></nav>
+
+    <section id="matchPage">
+      <div class="court-filter">
+        <button class="btn" id="court1">1. pálya</button>
+        <button class="btn" id="court2">2. pálya</button>
+        <button class="btn" id="courtBoth">Mindkettő</button>
+      </div>
+
+      <section class="card timer-card">
+        <strong id="roundLabel"></strong>
+        <div id="timer" class="timer-big">08:00</div>
+        <div id="timerStatus" class="sub"></div>
+        <div class="timer-actions">
+          <button id="startBtn" class="btn green">INDÍTÁS</button>
+          <button id="resetTimerBtn" class="btn">↺ IDŐ</button>
+        </div>
+      </section>
+
+      <div id="courts" class="admin-courts"></div>
+      <button id="finishRoundBtn" class="btn black full" style="margin-top:12px;min-height:56px">FORDULÓ LEZÁRÁSA</button>
+    </section>
+
+    <section id="resultsPage" class="hidden">
+      <section class="card">
+        <h2>Tabella</h2>
+        <div id="winner"></div>
+        <table id="adminStandings"><thead><tr><th>#</th><th>Csapat</th><th>M</th><th>Gy</th><th>V</th><th>+/-</th><th>P</th></tr></thead><tbody id="tableBody"></tbody></table>
+      </section>
+      <section class="card"><h2>Eredmények</h2><div id="results"></div></section>
+    </section>
+
+    <section id="settingsPage" class="hidden">
+      <section class="card">
+        <h2>Esemény állapota</h2>
+        <div class="sub">LIVE módban működik a realtime követés. ARCHÍV módban a QR oldal továbbra is mutatja az eredményeket, de nem nyit WebSocketet.</div>
+        <div class="status-actions" style="margin-top:12px">
+          <button id="upcomingBtn" class="btn">ELŐKÉSZÍTÉS</button>
+          <button id="liveBtn" class="btn green">LIVE</button>
+          <button id="archiveBtn" class="btn black">SPORTNAP LEZÁRÁSA</button>
+        </div>
+        <div class="field" style="margin-top:14px">
+          <label>Automatikus archív mód időpontja</label>
+          <input id="archiveAt" type="datetime-local">
+        </div>
+        <button id="saveArchiveAtBtn" class="btn full">Automatikus lezárás mentése</button>
+      </section>
+
+      <section id="tournamentSettings" class="card">
+        <h2>Bajnokság beállítása</h2>
+        <div class="grid2">
+          <div class="field"><label>Magyar név</label><input id="nameHu"></div>
+          <div class="field"><label>Angol név</label><input id="nameEn"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>Időblokk</label><input id="timeLabel" placeholder="14:30–15:00"></div>
+          <div class="field"><label>Meccsidő (perc)</label><input id="minutes" type="number" min="1" max="30" step="0.5"></div>
+        </div>
+        <div class="grid2">
+          <input id="team1" placeholder="1. csapat"><input id="team2" placeholder="2. csapat">
+          <input id="team3" placeholder="3. csapat"><input id="team4" placeholder="4. csapat">
+        </div>
+        <button id="saveSettingsBtn" class="btn yellow full" style="margin-top:12px">BEÁLLÍTÁSOK MENTÉSE</button>
+      </section>
+
+      <section class="card">
+        <h2>QR / publikus oldal</h2>
+        <div class="grid2">
+          <button id="openPublicBtn" class="btn">Publikus oldal</button>
+          <button id="openQrBtn" class="btn yellow">QR-kód</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Opcionális Final Four</h2>
+        <div class="sub">A négy alapbajnokság győzteséből két elődöntő, majd döntő.</div>
+        <button id="createFinalBtn" class="btn yellow full" style="margin-top:10px">DÖNTŐ LÉTREHOZÁSA</button>
+      </section>
+
+      <section class="card danger">
+        <h2>Vészfunkció</h2>
+        <button id="resetTournamentBtn" class="btn red full">AKTUÁLIS BAJNOKSÁG NULLÁZÁSA</button>
+      </section>
+    </section>
+  </main>
+
+  <nav id="bottomNav" class="bottom-nav hidden">
+    <button id="navMatch" class="active">🏐<br>Meccs</button>
+    <button id="navResults">🏆<br>Eredmények</button>
+    <button id="navSettings">⚙️<br>Beállítások</button>
+  </nav>
+
+  <div id="toast" class="toast hidden"></div>
+  <script type="module" src="/admin.js"></script>
+</body>
+</html>
