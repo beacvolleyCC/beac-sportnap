@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Sportnap – Röplabda</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="brand">
+    <div class="left-tools">
+      <div class="lang">
+        <button id="huBtn" class="active" type="button">🇭🇺 HU</button>
+        <button id="enBtn" type="button">🇬🇧 EN</button>
+      </div>
+    </div>
+    <div class="right-tools">
+      <button id="shareBtn" class="icon-btn" type="button" aria-label="Megosztás">
+        <svg viewBox="0 0 24 24"><path d="M12 3v12"></path><path d="M8 7l4-4 4 4"></path><path d="M5 11v8h14v-8"></path></svg>
+      </button>
+      <button id="themeBtn" class="icon-btn" type="button" aria-label="Sötét mód">◐</button>
+    </div>
+    <img class="brand-logo" src="/beac_logo.png" alt="BEAC">
+  </header>
+
+  <section class="hero">
+    <h1 id="eventTitle">Sportnap – Röplabda</h1>
+    <div id="eventSub" class="sub"></div>
+    <div id="statusPill" class="status-pill"><span class="status-dot"></span><span id="statusText"></span></div>
+  </section>
+
+  <div id="notice" class="notice upcoming"></div>
+  <nav id="tournamentTabs" class="tournament-tabs"></nav>
+  <section id="winnerWrap" class="wrap"></section>
+  <section id="matches" class="match-scroller"></section>
+
+  <main class="wrap">
+    <section id="standingsCard" class="card">
+      <h2 id="standingsTitle">Tabella</h2>
+      <table>
+        <thead><tr><th>#</th><th id="teamHead">Csapat</th><th>M</th><th>+/-</th><th>P</th></tr></thead>
+        <tbody id="standingsBody"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2 id="resultsTitle">Eredmények</h2>
+      <div id="results"></div>
+    </section>
+
+    <section class="card">
+      <h2 id="rulesTitle">Szabályok</h2>
+      <details open>
+        <summary id="matchRulesTitle">Mérkőzés</summary>
+        <div class="rules">
+          <ul>
+            <li><span id="durationPrefix">Egy mérkőzés játékideje:</span> <strong id="duration"></strong>.</li>
+            <li id="rallyRule"></li>
+            <li id="finishRallyRule"></li>
+            <li id="marginRule"></li>
+            <li id="drawRule"></li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary id="pointsRulesTitle"></summary>
+        <div class="rules"><ul><li id="winRule"></li><li id="lossRule"></li></ul></div>
+      </details>
+      <details>
+        <summary id="tieBreakTitle"></summary>
+        <div class="rules"><ol><li id="tb1"></li><li id="tb2"></li><li id="tb3"></li><li id="tb4"></li></ol></div>
+      </details>
+    </section>
+  </main>
+
+  <div id="shareModal" class="modal-bg hidden">
+    <div class="modal">
+      <h2 id="shareTitle"></h2>
+      <div id="shareHint" class="sub"></div>
+      <div id="qrcode"></div>
+      <div class="actions no-print">
+        <button id="copyBtn" class="btn yellow"></button>
+        <button id="nativeShareBtn" class="btn"></button>
+        <button id="printBtn" class="btn"></button>
+        <button id="closeShareBtn" class="btn"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"
+          integrity="sha512-CNgIRecGo7nphbeZ04Sc13ka07paqdeTu0WR1IM4kNcpmBAUSHSQX0FslNhTDadL4O5SAGapGt4FodqL8My0mA=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script type="module" src="/public.js"></script>
+</body>
+</html>
