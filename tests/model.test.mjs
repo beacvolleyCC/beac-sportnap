@@ -31,4 +31,93 @@ const decorated = decorateState(s);
 assert.ok(Array.isArray(decorated.tournaments[0].standings));
 assert.equal("recentActionIds" in decorated, false);
 
+
+
+// v0.5.3 timer state machine
+let timerState = defaultState();
+timerState = applyAction(
+  timerState,
+  { type:"SET_EVENT_STATUS", status:"LIVE", actionId:"timer-live" },
+  10000
+).state;
+
+timerState = applyAction(
+  timerState,
+  { type:"START_ROUND", tournamentId:"T1", actionId:"timer-start" },
+  11000
+).state;
+
+let timerT = timerState.tournaments[0];
+assert.equal(timerT.roundRunning, true);
+assert.equal(Boolean(timerT.roundPaused), false);
+assert.equal(timerT.roundEndAt, 11000 + timerT.roundSeconds * 1000);
+
+timerState = applyAction(
+  timerState,
+  { type:"PAUSE_ROUND", tournamentId:"T1", actionId:"timer-pause" },
+  21000
+).state;
+
+timerT = timerState.tournaments[0];
+assert.equal(timerT.roundRunning, false);
+assert.equal(timerT.roundPaused, true);
+assert.equal(timerT.roundEndAt, 0);
+assert.equal(timerT.roundPausedRemainingMs, timerT.roundSeconds * 1000 - 10000);
+
+const pausedRemaining = timerT.roundPausedRemainingMs;
+
+timerState = applyAction(
+  timerState,
+  { type:"START_ROUND", tournamentId:"T1", actionId:"timer-resume" },
+  31000
+).state;
+
+timerT = timerState.tournaments[0];
+assert.equal(timerT.roundRunning, true);
+assert.equal(timerT.roundPaused, false);
+assert.equal(timerT.roundPausedRemainingMs, 0);
+assert.equal(timerT.roundEndAt, 31000 + pausedRemaining);
+
+// STOP = current round close; tie blocks
+let stopState = defaultState();
+stopState = applyAction(
+  stopState,
+  { type:"SET_EVENT_STATUS", status:"LIVE", actionId:"stop-live" },
+  50000
+).state;
+
+assert.throws(
+  () => applyAction(
+    stopState,
+    { type:"STOP_ROUND", tournamentId:"T1", actionId:"stop-tied" },
+    51000
+  ),
+  /döntetlen/i
+);
+
+stopState = applyAction(
+  stopState,
+  { type:"CHANGE_SCORE", tournamentId:"T1", round:1, court:1, side:"A", delta:1, actionId:"stop-p1" },
+  52000
+).state;
+
+stopState = applyAction(
+  stopState,
+  { type:"CHANGE_SCORE", tournamentId:"T1", round:1, court:2, side:"B", delta:1, actionId:"stop-p2" },
+  53000
+).state;
+
+stopState = applyAction(
+  stopState,
+  { type:"STOP_ROUND", tournamentId:"T1", actionId:"stop-ok" },
+  54000
+).state;
+
+const stopT = stopState.tournaments[0];
+assert.equal(stopT.currentRound, 2);
+assert.equal(stopT.matches[0].finished, true);
+assert.equal(stopT.matches[1].finished, true);
+assert.equal(stopT.roundRunning, false);
+assert.equal(Boolean(stopT.roundPaused), false);
+
 console.log("MODEL TESTS OK");

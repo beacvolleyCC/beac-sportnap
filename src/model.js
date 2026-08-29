@@ -31,6 +31,8 @@ function baseTournament(id, number, time) {
     currentRound: 1,
     roundEndAt: 0,
     roundRunning: false,
+    roundPaused: false,
+    roundPausedRemainingMs: 0,
     winner: "",
     teams: [
       "1. csapat",
@@ -68,6 +70,8 @@ export function defaultState() {
         currentRound: 1,
         roundEndAt: 0,
         roundRunning: false,
+        roundPaused: false,
+        roundPausedRemainingMs: 0,
         winner: "",
         teams: [],
         matches: []
@@ -106,6 +110,8 @@ function resetTournamentScores(t) {
   t.currentRound = 1;
   t.roundEndAt = 0;
   t.roundRunning = false;
+  t.roundPaused = false;
+  t.roundPausedRemainingMs = 0;
   t.winner = "";
 
   for (const m of t.matches) {
@@ -206,6 +212,8 @@ function createFinal(state) {
     currentRound: 1,
     roundEndAt: 0,
     roundRunning: false,
+    roundPaused: false,
+    roundPausedRemainingMs: 0,
     matches: [
       {
         id: "SF1", round: 1, court: 1, a: 0, b: 3,
@@ -241,6 +249,8 @@ function finishRound(state, t, now) {
 
   t.roundRunning = false;
   t.roundEndAt = 0;
+  t.roundPaused = false;
+  t.roundPausedRemainingMs = 0;
 
   if (t.id === "FINAL") {
     if (t.currentRound === 1) {
@@ -322,8 +332,31 @@ export function applyAction(inputState, action, now = Date.now()) {
       assert(!t.winner, "Ez a bajnokság már lezárult.");
       const current = t.matches.filter(m => m.round === t.currentRound);
       assert(current.length > 0, "Nincs mérkőzés az aktuális fordulóban.");
+
+      const resumeMs =
+        t.roundPaused && Number(t.roundPausedRemainingMs || 0) > 0
+          ? Number(t.roundPausedRemainingMs)
+          : Number(t.roundSeconds || 0) * 1000;
+
       t.roundRunning = true;
-      t.roundEndAt = now + t.roundSeconds * 1000;
+      t.roundPaused = false;
+      t.roundPausedRemainingMs = 0;
+      t.roundEndAt = now + resumeMs;
+      break;
+    }
+
+    case "PAUSE_ROUND": {
+      assert(playableEvent(state), "Szüneteltetni csak LIVE módban lehet.");
+      assert(t && t.enabled, "A bajnokság nem érhető el.");
+      assert(t.roundRunning, "Az időmérő jelenleg nem fut.");
+
+      const remainingMs = Math.max(0, Number(t.roundEndAt || 0) - now);
+      assert(remainingMs > 0, "Az idő már lejárt.");
+
+      t.roundRunning = false;
+      t.roundPaused = true;
+      t.roundPausedRemainingMs = remainingMs;
+      t.roundEndAt = 0;
       break;
     }
 
@@ -331,7 +364,16 @@ export function applyAction(inputState, action, now = Date.now()) {
       assert(editableEvent(state), "Az esemény archivált.");
       assert(t && t.enabled, "A bajnokság nem érhető el.");
       t.roundRunning = false;
+      t.roundPaused = false;
+      t.roundPausedRemainingMs = 0;
       t.roundEndAt = 0;
+      break;
+    }
+
+    case "STOP_ROUND": {
+      assert(playableEvent(state), "Mérkőzést csak LIVE módban lehet lezárni.");
+      assert(t && t.enabled, "A bajnokság nem érhető el.");
+      finishRound(state, t, now);
       break;
     }
 
@@ -392,6 +434,8 @@ export function applyAction(inputState, action, now = Date.now()) {
       if (status !== "LIVE") {
         for (const tournament of state.tournaments) {
           tournament.roundRunning = false;
+          tournament.roundPaused = false;
+          tournament.roundPausedRemainingMs = 0;
           tournament.roundEndAt = 0;
         }
       }

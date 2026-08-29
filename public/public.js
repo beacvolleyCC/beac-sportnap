@@ -14,7 +14,7 @@ const T = {
     closed:"Ez az esemény lezárult.", shareTitle:"Élő eredmények megosztása",
     shareHint:"A QR-kód és a link az egész sportnap közös eredményoldalára mutat.",
     copy:"Link másolása", share:"Megosztás", print:"QR nyomtatása", close:"Bezárás",
-    time:"IDŐ!", finalUnknown:"A döntő párosítása még nem ismert.", noData:"Nincs eredmény."
+    time:"IDŐ!", paused:"Szüneteltetve", finalUnknown:"A döntő párosítása még nem ismert.", noData:"Nincs eredmény."
   },
   en: {
     standings:"Standings", team:"Team", results:"Results", rules:"Rules",
@@ -31,7 +31,7 @@ const T = {
     closed:"This event has ended.", shareTitle:"Share live results",
     shareHint:"The QR code and link point to the shared results page for the whole sports day.",
     copy:"Copy link", share:"Share", print:"Print QR", close:"Close",
-    time:"TIME!", finalUnknown:"The final pairing is not known yet.", noData:"No results yet."
+    time:"TIME!", paused:"Paused", finalUnknown:"The final pairing is not known yet.", noData:"No results yet."
   }
 };
 
@@ -122,6 +122,9 @@ function formatDuration(sec){
 }
 
 function remaining(t){
+  if(t.roundPaused){
+    return Math.max(0,Math.ceil(Number(t.roundPausedRemainingMs||0)/1000));
+  }
   if(!t.roundRunning || !t.roundEndAt) return t.roundSeconds;
   return Math.max(0, Math.ceil((t.roundEndAt-Date.now())/1000));
 }
@@ -196,7 +199,7 @@ function renderTournament(){
           <div class="team">${escapeHtml(t.teams[m.b])}</div>
         </div>
         <div class="public-timer" data-timer>${timeup?tr("time"):fmt(sec)}</div>
-        <div class="golden">${golden?tr("golden"):""}</div>
+        <div class="golden">${t.roundPaused?tr("paused"):(golden?tr("golden"):"")}</div>
       </div>
     </article>`;
   }).join("");

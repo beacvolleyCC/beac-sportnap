@@ -77,7 +77,13 @@ window.addEventListener("online",()=>{flushQueue();if(state?.eventStatus==="LIVE
 window.addEventListener("offline",()=>setConnection("offline","OFFLINE"));
 
 function currentT(){return state?.tournaments.find(t=>t.id===selectedId);}
-function remaining(t){if(!t.roundRunning||!t.roundEndAt)return t.roundSeconds;return Math.max(0,Math.ceil((t.roundEndAt-Date.now())/1000));}
+function remaining(t){
+  if(t.roundPaused){
+    return Math.max(0,Math.ceil(Number(t.roundPausedRemainingMs||0)/1000));
+  }
+  if(!t.roundRunning||!t.roundEndAt)return t.roundSeconds;
+  return Math.max(0,Math.ceil((t.roundEndAt-Date.now())/1000));
+}
 function fmt(s){return`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;}
 
 function pendingDelta(match,side){
@@ -186,10 +192,44 @@ function renderTabs(){
 function renderMatch(){
   const t=currentT();const sec=remaining(t);const timeup=t.roundRunning&&sec===0;
   $("roundLabel").textContent=`${t.currentRound}. forduló`;
-  $("timer").textContent=timeup?"IDŐ!":fmt(sec);$("timer").classList.toggle("timeup",timeup);
-  $("timerStatus").textContent=timeup?"Ha döntetlen az állás, a következő pont nyer.":t.roundRunning?"Játék folyamatban":state.eventStatus==="LIVE"?"Indításra kész":"A timer LIVE módban indítható.";
-  $("startBtn").disabled=state.eventStatus!=="LIVE"||t.roundRunning||Boolean(t.winner);
-  $("finishRoundBtn").disabled=state.eventStatus!=="LIVE"||Boolean(t.winner);
+  $("timer").textContent=timeup?"IDŐ!":fmt(sec);
+  $("timer").classList.toggle("timeup",timeup);
+
+  const mainBtn=$("timerMainBtn");
+  const resetBtn=$("resetTimerBtn");
+  const stopBtn=$("stopBtn");
+
+  if(state.eventStatus!=="LIVE"||t.winner){
+    $("timerStatus").textContent=t.winner?"A bajnokság lezárult.":"A timer LIVE módban indítható.";
+    mainBtn.textContent="INDÍTÁS";
+    mainBtn.disabled=true;
+    resetBtn.classList.remove("hidden");
+    resetBtn.disabled=Boolean(t.winner);
+    stopBtn.classList.add("hidden");
+  }else if(t.roundPaused){
+    $("timerStatus").textContent="Szüneteltetve";
+    mainBtn.textContent="FOLYTATÁS";
+    mainBtn.disabled=false;
+    resetBtn.classList.add("hidden");
+    stopBtn.classList.remove("hidden");
+    stopBtn.disabled=false;
+  }else if(t.roundRunning){
+    $("timerStatus").textContent=timeup
+      ?"Idő lejárt. Döntetlennél a következő pont nyer."
+      :"Játék folyamatban";
+    mainBtn.textContent="SZÜNET";
+    mainBtn.disabled=timeup;
+    resetBtn.classList.add("hidden");
+    stopBtn.classList.remove("hidden");
+    stopBtn.disabled=false;
+  }else{
+    $("timerStatus").textContent="Indításra kész";
+    mainBtn.textContent="INDÍTÁS";
+    mainBtn.disabled=false;
+    resetBtn.classList.remove("hidden");
+    resetBtn.disabled=false;
+    stopBtn.classList.add("hidden");
+  }
 
   let ms=t.matches.filter(m=>m.round===t.currentRound);
   if(courtFilter)ms=ms.filter(m=>m.court===courtFilter);
@@ -243,9 +283,40 @@ function renderSettings(){
 setInterval(()=>{if(state&&page==="match")renderMatch();},500);
 $("court1").onclick=()=>setCourt(1);$("court2").onclick=()=>setCourt(2);$("courtBoth").onclick=()=>setCourt(0);
 function setCourt(v){courtFilter=v;localStorage.setItem("beac-court-filter",String(v));renderMatch();}
-$("startBtn").onclick=()=>sendAction({type:"START_ROUND",tournamentId:selectedId});
-$("resetTimerBtn").onclick=()=>{if(confirm("Visszaállítsuk az időt? A pontok nem törlődnek."))sendAction({type:"RESET_TIMER",tournamentId:selectedId});};
-$("finishRoundBtn").onclick=()=>{if(confirm("Lezárjuk ezt a fordulót? Döntetlen eredmény nem zárható le."))sendAction({type:"FINISH_ROUND",tournamentId:selectedId});};
+$("timerMainBtn").onclick=()=>{
+  const t=currentT();
+  if(!t)return;
+
+  if(t.roundRunning){
+    sendAction({type:"PAUSE_ROUND",tournamentId:selectedId});
+  }else{
+    sendAction({type:"START_ROUND",tournamentId:selectedId});
+  }
+};
+
+$("resetTimerBtn").onclick=()=>{
+  if(confirm("Visszaállítsuk az időt a teljes meccsidőre? A pontok nem törlődnek.")){
+    sendAction({type:"RESET_TIMER",tournamentId:selectedId});
+  }
+};
+
+$("stopBtn").onclick=()=>{
+  const t=currentT();
+  if(!t)return;
+
+  const current=t.matches.filter(m=>m.round===t.currentRound);
+  const tied=current.filter(m=>m.a!=null&&m.b!=null&&m.scoreA===m.scoreB);
+
+  if(tied.length){
+    const courts=tied.map(m=>`${m.court}. pálya`).join(", ");
+    toast(`Nem zárható le: ${courts} döntetlen. A következő pont nyer.`);
+    return;
+  }
+
+  if(confirm("STOP = a forduló vége. Lezárjuk a két mérkőzést és továbblépünk?")){
+    sendAction({type:"STOP_ROUND",tournamentId:selectedId});
+  }
+};
 
 $("saveSettingsBtn").onclick=()=>{
   const minutes=Number($("minutes").value);

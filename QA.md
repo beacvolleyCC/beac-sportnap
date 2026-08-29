@@ -28,3 +28,15 @@
 
 - WebSocket upgrade az eredeti requesttel továbbítva.
 - HTTP 4xx score hiba nem marad bent offline queue-ban.
+
+
+## v0.5.3 timer regresszió
+- READY -> INDÍTÁS + IDŐ NULLÁZÁSA
+- RUNNING -> SZÜNET + STOP
+- PAUSED -> FOLYTATÁS + STOP
+- Pause megőrzi a hátralévő időt.
+- Resume ugyanonnan folytatja.
+- STOP döntetlennél blokkol.
+- STOP nem döntetlennél lezárja a két aktuális mérkőzést és továbblép.
+- A külön FORDULÓ LEZÁRÁSA gomb kikerült.
+- A publikus oldalon pause alatt a timer megáll, és „Szüneteltetve / Paused” látható.
