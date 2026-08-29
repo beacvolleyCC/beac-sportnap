@@ -1,4 +1,4 @@
-BEAC Röplabda realtime béta v0.5.2
+BEAC Röplabda realtime béta v0.5.1
 
 AUTOMATIKUS ELLENŐRZÉS:
 - Worker JavaScript syntax: OK
