@@ -10,7 +10,7 @@ const T = {
     tiebreak:"Holtverseny a tabellán", tb1:"bajnoki pont;", tb2:"pontkülönbség;", tb3:"szerzett pontok;", tb4:"egymás elleni eredmény.",
     round:"forduló", court:"pálya", winner:"A bajnokság győztese",
     golden:"Döntetlen – a következő pont nyer",
-    upcoming:"A sportnap még nem indult el.", live:"Élő eredmények", archived:"A sportnap véget ért – az eredmények visszanézhetők.",
+    upcoming:"A bajnokság még nem kezdődött el.", live:"Élő eredmények", archived:"A bajnokság már lezárult.",
     closed:"Ez az esemény lezárult.", shareTitle:"Élő eredmények megosztása",
     shareHint:"A QR-kód és a link az egész sportnap közös eredményoldalára mutat.",
     copy:"Link másolása", share:"Megosztás", print:"QR nyomtatása", close:"Bezárás",
@@ -27,8 +27,8 @@ const T = {
     tiebreak:"Standings tie-break", tb1:"league points;", tb2:"point difference;", tb3:"points scored;", tb4:"head-to-head result.",
     round:"round", court:"court", winner:"Tournament winner",
     golden:"Tied – next point wins",
-    upcoming:"The sports day has not started yet.", live:"Live results", archived:"The sports day is over – results remain available.",
-    closed:"This event has ended.", shareTitle:"Share live results",
+    upcoming:"The tournament has not started yet.", live:"Live results", archived:"The tournament has ended.",
+    closed:"The sports day has ended.", shareTitle:"Share live results",
     shareHint:"The QR code and link point to the shared results page for the whole sports day.",
     copy:"Copy link", share:"Share", print:"Print QR", close:"Close",
     time:"TIME!", paused:"Paused", finished:"Match finished", timeExpired:"Time expired", finalUnknown:"The final pairing is not known yet.", noData:"No results yet."
@@ -185,9 +185,6 @@ function render(){
   const t=currentTournament();
   $("eventSub").textContent=t?`${tournamentName(t)}${t.time?" · "+t.time:""}`:"";
 
-  const pill=$("statusPill");
-  pill.className=`status-pill ${state.eventStatus.toLowerCase()}`;
-  $("statusText").textContent=state.eventStatus;
   showNotice(state.eventStatus.toLowerCase(),statusText());
 
   renderTabs();

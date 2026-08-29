@@ -57,3 +57,14 @@ Kötelező ellenőrzés:
   - döntetlen meccs nyitva marad, következő pont dönt.
 - Publikus oldalon a két pálya saját ideje egymástól függetlenül látszik.
 - v0.5.3 perzisztált állapot migrációja tesztelve.
+
+
+## v0.5.5 – publikus státusz egyszerűsítés
+- A cím alatti külön LIVE / event-status kapszula eltávolítva.
+- A felső információs sáv az egyetlen publikus státuszjelzés.
+- LIVE: „Élő eredmények”
+- UPCOMING: „A bajnokság még nem kezdődött el.”
+- ARCHIVED: „A bajnokság már lezárult.”
+- CLOSED: „A sportnap lezárult.”
+- Angol megfelelőik is frissítve.
+- v0.5.4 pályánkénti timer/STOP logikához nem nyúltunk.
